@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>OpenStreetMap with Leaflet</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+</head>
+<body>
+  <div id="map" style="width: 100%; height: 100vh;"></div>
+  <script>
+    var map = L.map('map').setView([48.858844, 2.294351], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    var marker = L.marker([48.858844, 2.294351]).addTo(map)
+      .bindPopup('Paris')
+      .openPopup();
+
+    // Fonction pour obtenir les détails d'un lieu
+    function getPlaceDetails(lat, lng) {
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+        .then(response => response.json())
+        .then(data => {
+          var placeDetails = data.display_name || 'Détails non disponibles';
+          marker.bindPopup(placeDetails).openPopup();
+        })
+        .catch(err => console.error(err));
+    }
+
+    // Déplacer le marqueur au clic et obtenir les détails du lieu
+    function onMapClick(e) {
+      var latlng = e.latlng;
+      marker.setLatLng(latlng);
+      getPlaceDetails(latlng.lat, latlng.lng);
+    }
+    map.on('click', onMapClick);
+
+    // Ajouter un contrôleur de géocodage (recherche d'adresses)
+    L.Control.geocoder({
+      defaultMarkGeocode: false
+    })
+      .on('markgeocode', function(e) {
+        var latlng = e.geocode.center;
+        marker.setLatLng(latlng).bindPopup(e.geocode.name).openPopup();
+        map.setView(latlng, 13);
+      })
+      .addTo(map);
+
+    // Ajouter la machine de routage pour tracer un itinéraire
+    var routingControl = L.Routing.control({
+      waypoints: [
+        L.latLng(48.858844, 2.294351), // Point de départ (Paris)
+        L.latLng(48.8566, 2.3522) // Point d'arrivée initial (Centre de Paris)
+      ],
+      routeWhileDragging: true,
+      geocoder: L.Control.Geocoder.nominatim(),
+      createMarker: function() { return null; }
+    }).addTo(map);
+  </script>
+</body>
+</html>
